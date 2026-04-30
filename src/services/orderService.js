@@ -132,6 +132,36 @@ async function getOrderByCode(orderCode) {
 }
 
 async function updateOrderStatus(orderCode, status) {
+  const currentOrder = await get(
+    `
+      SELECT id, status
+      FROM orders
+      WHERE order_id = ?
+    `,
+    [orderCode]
+  );
+
+  if (!currentOrder) {
+    return null;
+  }
+
+  if (currentOrder.status !== status) {
+    const statusOrder = {
+      RECEIVED: 0,
+      PROCESSING: 1,
+      READY: 2,
+      DELIVERED: 3
+    };
+
+    if (statusOrder[status] < statusOrder[currentOrder.status]) {
+      const error = new Error(
+        `Invalid status transition: ${currentOrder.status} -> ${status}. Allowed flow is RECEIVED -> PROCESSING -> READY -> DELIVERED.`
+      );
+      error.code = "INVALID_STATUS_TRANSITION";
+      throw error;
+    }
+  }
+
   const updateResult = await run(
     `
       UPDATE orders
@@ -141,10 +171,7 @@ async function updateOrderStatus(orderCode, status) {
     [status, orderCode]
   );
 
-  if (updateResult.changes === 0) {
-    return null;
-  }
-
+  if (updateResult.changes === 0) return null;
   return getOrderByCode(orderCode);
 }
 
