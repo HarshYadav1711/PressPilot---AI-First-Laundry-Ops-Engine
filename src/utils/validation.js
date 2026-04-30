@@ -36,8 +36,8 @@ function validateCreateOrderPayload(payload) {
         return;
       }
 
-      if (!isNonEmptyString(item.garmentType)) {
-        errors.push(`garments[${index}].garmentType must be a non-empty string.`);
+      if (!isNonEmptyString(item.type)) {
+        errors.push(`garments[${index}].type must be a non-empty string.`);
       }
 
       if (!Number.isInteger(item.quantity) || item.quantity <= 0) {

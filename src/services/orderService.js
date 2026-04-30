@@ -6,26 +6,46 @@ function calculateOrderTotal(garments) {
   return garments.reduce((sum, item) => sum + item.quantity * item.pricePerItem, 0);
 }
 
+async function insertOrderWithUniqueId({ customerName, phoneNumber, totalBill, createdAt }) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const orderCode = generateOrderId();
+    try {
+      const insertOrder = await run(
+        `
+          INSERT INTO orders (order_id, customer_name, phone_number, status, total_bill, created_at)
+          VALUES (?, ?, ?, 'RECEIVED', ?, ?)
+        `,
+        [orderCode, customerName, phoneNumber, totalBill, createdAt]
+      );
+      return { orderCode, orderRowId: insertOrder.lastID };
+    } catch (error) {
+      if (error && error.code === "SQLITE_CONSTRAINT") {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error("Could not generate a unique order ID.");
+}
+
 async function createOrder(payload) {
   const customerName = payload.customerName.trim();
   const phoneNumber = payload.phoneNumber.trim();
   const garments = payload.garments.map((item) => ({
-    garmentType: item.garmentType.trim(),
+    type: item.type.trim(),
     quantity: item.quantity,
     pricePerItem: item.pricePerItem
   }));
 
   const totalBill = calculateOrderTotal(garments);
   const createdAt = new Date().toISOString();
-  const orderCode = generateOrderId();
-
-  const insertOrder = await run(
-    `
-      INSERT INTO orders (order_id, customer_name, phone_number, status, total_bill, created_at)
-      VALUES (?, ?, ?, 'RECEIVED', ?, ?)
-    `,
-    [orderCode, customerName, phoneNumber, totalBill, createdAt]
-  );
+  const { orderCode, orderRowId } = await insertOrderWithUniqueId({
+    customerName,
+    phoneNumber,
+    totalBill,
+    createdAt
+  });
 
   for (const item of garments) {
     const lineTotal = item.quantity * item.pricePerItem;
@@ -34,7 +54,7 @@ async function createOrder(payload) {
         INSERT INTO order_items (order_id, garment_type, quantity, price_per_item, line_total)
         VALUES (?, ?, ?, ?, ?)
       `,
-      [insertOrder.lastID, item.garmentType, item.quantity, item.pricePerItem, lineTotal]
+      [orderRowId, item.type, item.quantity, item.pricePerItem, lineTotal]
     );
   }
 
@@ -57,7 +77,7 @@ async function getOrderByCode(orderCode) {
 
   const items = await all(
     `
-      SELECT garment_type, quantity, price_per_item
+      SELECT garment_type, quantity, price_per_item, line_total
       FROM order_items
       WHERE order_id = ?
       ORDER BY id ASC
@@ -73,9 +93,10 @@ async function getOrderByCode(orderCode) {
     totalBill: order.total_bill,
     createdAt: order.created_at,
     garments: items.map((item) => ({
-      garmentType: item.garment_type,
+      type: item.garment_type,
       quantity: item.quantity,
-      pricePerItem: item.price_per_item
+      pricePerItem: item.price_per_item,
+      lineTotal: item.line_total
     }))
   };
 }
@@ -139,7 +160,7 @@ async function listOrders(filters = {}) {
   const placeholders = orderIds.map(() => "?").join(", ");
   const items = await all(
     `
-      SELECT order_id, garment_type, quantity, price_per_item
+      SELECT order_id, garment_type, quantity, price_per_item, line_total
       FROM order_items
       WHERE order_id IN (${placeholders})
       ORDER BY id ASC
@@ -153,9 +174,10 @@ async function listOrders(filters = {}) {
       itemsByOrderId[item.order_id] = [];
     }
     itemsByOrderId[item.order_id].push({
-      garmentType: item.garment_type,
+      type: item.garment_type,
       quantity: item.quantity,
-      pricePerItem: item.price_per_item
+      pricePerItem: item.price_per_item,
+      lineTotal: item.line_total
     });
   }
 

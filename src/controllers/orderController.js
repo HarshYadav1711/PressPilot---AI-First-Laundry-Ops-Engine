@@ -5,11 +5,16 @@ async function createOrder(req, res, next) {
   try {
     const validation = validateCreateOrderPayload(req.body);
     if (!validation.valid) {
-      return res.status(400).json({ message: "Validation failed.", errors: validation.errors });
+      return res.status(400).json({
+        message: "Validation failed.",
+        errors: validation.errors
+      });
     }
 
     const createdOrder = await orderService.createOrder(req.body);
-    return res.status(201).json(createdOrder);
+    return res.status(201).json({
+      order: createdOrder
+    });
   } catch (error) {
     return next(error);
   }
