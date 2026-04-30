@@ -6,6 +6,37 @@ function calculateOrderTotal(garments) {
   return garments.reduce((sum, item) => sum + item.quantity * item.pricePerItem, 0);
 }
 
+function getEstimatedDeliveryDate(createdAt, status) {
+  const statusDays = {
+    RECEIVED: 3,
+    PROCESSING: 2,
+    READY: 0,
+    DELIVERED: 0
+  };
+  const daysToAdd = statusDays[status] ?? 0;
+  const estimatedDate = new Date(createdAt);
+  estimatedDate.setDate(estimatedDate.getDate() + daysToAdd);
+  return estimatedDate.toISOString();
+}
+
+function toOrderResponse(order, items) {
+  return {
+    orderId: order.order_id,
+    customerName: order.customer_name,
+    phoneNumber: order.phone_number,
+    status: order.status,
+    totalBill: order.total_bill,
+    createdAt: order.created_at,
+    estimatedDeliveryDate: getEstimatedDeliveryDate(order.created_at, order.status),
+    garments: items.map((item) => ({
+      type: item.garment_type,
+      quantity: item.quantity,
+      pricePerItem: item.price_per_item,
+      lineTotal: item.line_total
+    }))
+  };
+}
+
 async function insertOrderWithUniqueId({ customerName, phoneNumber, totalBill, createdAt }) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const orderCode = generateOrderId();
@@ -85,20 +116,7 @@ async function getOrderByCode(orderCode) {
     [order.id]
   );
 
-  return {
-    orderId: order.order_id,
-    customerName: order.customer_name,
-    phoneNumber: order.phone_number,
-    status: order.status,
-    totalBill: order.total_bill,
-    createdAt: order.created_at,
-    garments: items.map((item) => ({
-      type: item.garment_type,
-      quantity: item.quantity,
-      pricePerItem: item.price_per_item,
-      lineTotal: item.line_total
-    }))
-  };
+  return toOrderResponse(order, items);
 }
 
 async function updateOrderStatus(orderCode, status) {
@@ -143,6 +161,18 @@ async function listOrders(filters = {}) {
     params.push(searchValue, `%${String(filters.search).trim()}%`);
   }
 
+  if (filters.garmentType) {
+    conditions.push(
+      `EXISTS (
+        SELECT 1
+        FROM order_items oi_filter
+        WHERE oi_filter.order_id = o.id
+          AND LOWER(oi_filter.garment_type) LIKE ?
+      )`
+    );
+    params.push(`%${String(filters.garmentType).toLowerCase().trim()}%`);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const orders = await all(
@@ -183,23 +213,10 @@ async function listOrders(filters = {}) {
     if (!itemsByOrderId[item.order_id]) {
       itemsByOrderId[item.order_id] = [];
     }
-    itemsByOrderId[item.order_id].push({
-      type: item.garment_type,
-      quantity: item.quantity,
-      pricePerItem: item.price_per_item,
-      lineTotal: item.line_total
-    });
+    itemsByOrderId[item.order_id].push(item);
   }
 
-  return orders.map((order) => ({
-    orderId: order.order_id,
-    customerName: order.customer_name,
-    phoneNumber: order.phone_number,
-    status: order.status,
-    totalBill: order.total_bill,
-    createdAt: order.created_at,
-    garments: itemsByOrderId[order.id] || []
-  }));
+  return orders.map((order) => toOrderResponse(order, itemsByOrderId[order.id] || []));
 }
 
 async function getDashboard() {

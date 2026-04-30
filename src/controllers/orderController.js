@@ -44,7 +44,7 @@ async function updateOrderStatus(req, res, next) {
 
 async function listOrders(req, res, next) {
   try {
-    const { status, customerName, phoneNumber, search } = req.query;
+    const { status, customerName, phoneNumber, garmentType, search } = req.query;
 
     if (status && !isValidStatus(status)) {
       return res.status(400).json({
@@ -56,6 +56,7 @@ async function listOrders(req, res, next) {
       status,
       customerName,
       phoneNumber,
+      garmentType,
       search
     });
     return res.json({ count: orders.length, orders });
