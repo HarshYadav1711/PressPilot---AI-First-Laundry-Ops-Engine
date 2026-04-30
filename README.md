@@ -1,189 +1,307 @@
 # PressPilot
 
-PressPilot is a backend-first mini laundry order management system built for the Quick Dry Cleaning Software Development Engineering (Web) internship assessment.
-
-It focuses on practical dry-cleaning workflow essentials:
-- create orders with garment-level pricing
-- track order lifecycle status
-- search and filter orders quickly
-- view a basic operations dashboard
+PressPilot is a backend-first mini laundry order management system for the Quick Dry Cleaning internship assessment.  
+It models a practical dry-cleaning workflow: create orders, track status, search/filter orders, and view operational summary metrics.
 
 ## Tech Stack
 
-- Node.js (LTS)
-- Express.js
-- In-memory data store (simple and fast for assessment/demo use)
+- Node.js + Express
+- SQLite (`sqlite3`)
+- No paid APIs or external services
 
-No paid APIs, billing setup, or proprietary services are required.
+## What The Project Does
 
-## Features Implemented
-
-### 1) Create Order
-- Captures:
-  - `customerName`
-  - `phoneNumber`
-  - `garments[]` with:
-    - `garmentType`
-    - `quantity`
-    - `pricePerItem`
-- Auto-calculates `totalBill`
-- Generates unique `orderId` (format: `PP-...`)
-- Assigns default status: `RECEIVED`
-
-### 2) Order Status Management
-Allowed statuses (exact):
-- `RECEIVED`
-- `PROCESSING`
-- `READY`
-- `DELIVERED`
-
-Supports updating status per order.
-
-### 3) View Orders
-- List all orders
-- Filter by status
-- Filter by customer name or phone number
-
-### 4) Basic Dashboard
-- Total orders
-- Total revenue
-- Orders per status
+- Accepts customer laundry orders with multiple garment line items.
+- Calculates total bill from quantity and per-item price.
+- Assigns a human-readable unique order ID (`PP-YYYYMMDD-XXXX`).
+- Persists orders and items in SQLite.
+- Supports order lifecycle updates using exactly:
+  - `RECEIVED`
+  - `PROCESSING`
+  - `READY`
+  - `DELIVERED`
+- Provides listing/search filters and a lightweight dashboard endpoint.
 
 ## Project Structure
 
 ```text
 presspilot/
+  data/
+    .gitkeep
   src/
-    constants.js      # order statuses
-    server.js         # API routes and app bootstrap
-    store.js          # in-memory order storage
-    utils.js          # helpers (ID, totals, status checks)
-    validation.js     # request payload validation
+    controllers/
+      orderController.js
+    database/
+      connection.js
+      init.js
+      schema.sql
+    routes/
+      orderRoutes.js
+    services/
+      orderService.js
+    utils/
+      constants.js
+      orderId.js
+      validation.js
+    server.js
   PressPilot.postman_collection.json
   package.json
   README.md
 ```
 
-## Setup and Run
+## Install and Run
 
 ### Prerequisites
-- Node.js 18+ (or latest LTS)
+
+- Node.js 18+
 - npm
 
-### Install
+### Setup
+
 ```bash
 npm install
 ```
 
-### Start server
+### Run
+
 ```bash
-npm run start
+npm start
 ```
 
-Development mode (auto-reload with Node watch):
+Dev mode:
+
 ```bash
 npm run dev
 ```
 
-Server runs on:
-- `http://localhost:3000`
+Server URL: `http://localhost:3000`
+
+## Core Features Implemented
+
+- **Create Order**
+  - Inputs: `customerName`, `phoneNumber`, `garments[]`
+  - Garment fields: `type`, `quantity`, `pricePerItem`
+  - Auto-calculates `lineTotal` and `totalBill`
+  - Stores order + order items in SQLite
+
+- **Order Status Management**
+  - Update status endpoint
+  - Strict status validation for `RECEIVED | PROCESSING | READY | DELIVERED`
+
+- **Order Listing + Filtering**
+  - List all orders
+  - Filter by `status`
+  - Filter by `customerName` (case-insensitive)
+  - Filter by `phoneNumber`
+  - Filter by `garmentType` (case-insensitive)
+  - Combined `search` (customer name or phone)
+
+- **Dashboard**
+  - Total orders
+  - Total revenue
+  - Count per status
+
+- **Useful Bonus (kept restrained)**
+  - Deterministic `estimatedDeliveryDate` based on `createdAt` + status offset
 
 ## API Endpoints
 
-### Health
 - `GET /health`
-
-### Create Order
 - `POST /api/orders`
+- `PATCH /api/orders/:orderId/status`
+- `GET /api/orders`
+- `GET /api/dashboard`
 
-Example request body:
+### Query Params for `GET /api/orders`
+
+- `status`
+- `customerName`
+- `phoneNumber`
+- `garmentType`
+- `search`
+
+## Sample Requests and Responses
+
+### 1) Create Order
+
+`POST /api/orders`
+
+Request:
+
 ```json
 {
-  "customerName": "Anita Sharma",
+  "customerName": "Aman Verma",
   "phoneNumber": "9876543210",
   "garments": [
-    { "garmentType": "Shirt", "quantity": 3, "pricePerItem": 50 },
-    { "garmentType": "Pants", "quantity": 2, "pricePerItem": 80 }
+    { "type": "Shirt", "quantity": 2, "pricePerItem": 60 },
+    { "type": "Saree", "quantity": 1, "pricePerItem": 180 }
   ]
 }
 ```
 
-### Update Order Status
-- `PATCH /api/orders/:orderId/status`
+Response (201):
 
-Example request body:
 ```json
 {
-  "status": "READY"
+  "order": {
+    "orderId": "PP-20260501-AB12",
+    "customerName": "Aman Verma",
+    "phoneNumber": "9876543210",
+    "status": "RECEIVED",
+    "totalBill": 300,
+    "createdAt": "2026-05-01T00:00:00.000Z",
+    "estimatedDeliveryDate": "2026-05-04T00:00:00.000Z",
+    "garments": [
+      { "type": "Shirt", "quantity": 2, "pricePerItem": 60, "lineTotal": 120 },
+      { "type": "Saree", "quantity": 1, "pricePerItem": 180, "lineTotal": 180 }
+    ]
+  }
 }
 ```
 
-### List / Filter Orders
-- `GET /api/orders`
-- `GET /api/orders?status=PROCESSING`
-- `GET /api/orders?search=anita`
+Validation error example (400):
 
-### Dashboard
-- `GET /api/dashboard`
+```json
+{
+  "message": "Validation failed.",
+  "errors": [
+    "customerName is required and must be a non-empty string.",
+    "phoneNumber is required and must be 10-15 digits."
+  ]
+}
+```
+
+### 2) Update Status
+
+`PATCH /api/orders/:orderId/status`
+
+Request:
+
+```json
+{
+  "status": "PROCESSING"
+}
+```
+
+Invalid status response (400):
+
+```json
+{
+  "message": "Invalid status. Allowed values are RECEIVED, PROCESSING, READY, DELIVERED."
+}
+```
+
+### 3) List / Filter Orders
+
+- `GET /api/orders`
+- `GET /api/orders?status=READY`
+- `GET /api/orders?customerName=aman`
+- `GET /api/orders?phoneNumber=3210`
+- `GET /api/orders?garmentType=shirt`
+- `GET /api/orders?search=aman`
+
+Response shape:
+
+```json
+{
+  "count": 1,
+  "orders": [
+    {
+      "orderId": "PP-20260501-AB12",
+      "customerName": "Aman Verma",
+      "phoneNumber": "9876543210",
+      "status": "READY",
+      "totalBill": 300,
+      "createdAt": "2026-05-01T00:00:00.000Z",
+      "estimatedDeliveryDate": "2026-05-01T00:00:00.000Z",
+      "garments": [
+        { "type": "Shirt", "quantity": 2, "pricePerItem": 60, "lineTotal": 120 }
+      ]
+    }
+  ]
+}
+```
+
+### 4) Dashboard
+
+`GET /api/dashboard`
+
+Response:
+
+```json
+{
+  "totalOrders": 12,
+  "totalRevenue": 3890,
+  "ordersPerStatus": {
+    "RECEIVED": 4,
+    "PROCESSING": 3,
+    "READY": 3,
+    "DELIVERED": 2
+  }
+}
+```
 
 ## Demo Artifact
 
-Postman collection included:
-- `PressPilot.postman_collection.json`
+- Postman collection: `PressPilot.postman_collection.json`
+- Contains ready-to-run requests for:
+  - health
+  - create order
+  - update status
+  - list orders with common filters
+  - dashboard
 
-Import it into Postman and run requests in this sequence:
-1. Create Order
-2. List Orders
-3. Update Order Status
-4. Filter Orders
-5. Dashboard Stats
+## Suggested Demo Flow (2-3 minutes)
 
-## Validation Rules
-
-- `customerName`: required, non-empty string
-- `phoneNumber`: required, 10-15 digits
-- `garments`: required, non-empty array
-- `garmentType`: required, non-empty string
-- `quantity`: positive integer
-- `pricePerItem`: non-negative number
-- `status`: must be one of exact allowed values
+1. Run `POST /api/orders` twice with different garments/customers.
+2. Update one order to `PROCESSING`, then `READY`.
+3. Run filtered listing with `status`, `customerName`, and `garmentType`.
+4. Open `GET /api/dashboard` to show aggregated metrics.
 
 ## AI Usage Report
 
-This project was built with AI assistance as required by the assignment.
+### Tools Used
 
-### AI Tools Used
-- Cursor AI agent (for scaffolding, endpoint design, and docs drafting)
+- Cursor AI agent (coding + refactors + documentation drafting)
 
-### Sample Prompts Used
-- "Build a minimal Express backend for laundry order management with create/list/update-status/dashboard endpoints."
-- "Add strict status validation for RECEIVED, PROCESSING, READY, DELIVERED."
-- "Draft a concise README including setup, features, tradeoffs, and AI usage report."
+### Representative Prompts Used
+
+- "Create a lightweight Express + SQLite backend for laundry order management."
+- "Implement create order with validation, line totals, and SQLite persistence."
+- "Add strict status update flow and practical order filters."
+- "Prepare submission-ready README with sample API requests/responses and tradeoffs."
 
 ### Where AI Helped
-- Rapid project scaffolding
-- Endpoint and payload structure planning
-- Validation checklist creation
-- README and API artifact drafting
 
-### What AI Got Wrong / Needed Fixes
-- Initial drafts were too generic and had to be tightened to match the exact assessment constraints.
-- Some phrasing was adjusted manually for clarity and realism in a dry-cleaning workflow.
+- Initial project scaffolding and file organization
+- Route/controller/service wiring
+- Validation and SQL query drafting
+- First-pass documentation
 
-### Manual Improvements
-- Simplified architecture to avoid over-engineering
-- Tightened validation messages and endpoint behavior
-- Ensured status enum and assignment requirements match exactly
-- Curated final structure to stay interview-friendly and readable in one sitting
+### What AI Got Wrong
 
-## Tradeoffs and Notes
+- Early docs and payload examples reflected an older in-memory shape and field names.
+- Needed manual correction to align everything with final SQLite implementation and `type` garment field.
 
-- In-memory storage was chosen for speed and simplicity of assessment delivery.
-- Data resets on server restart (acceptable for this scope).
-- No authentication/UI added to keep focus on core backend workflow requirements.
+### Manual Corrections Made
 
-For production evolution, next logical steps would be:
-- persistent DB (PostgreSQL)
-- authentication/authorization
-- audit logs and pagination
-- automated tests and CI
+- Tightened endpoint contracts and validation messaging
+- Standardized response shape and status enforcement
+- Added deterministic delivery-date logic and practical filter behavior
+- Rewrote README to match actual current behavior
+
+## Tradeoffs and Intentional Omissions
+
+- No auth/roles: out of scope for assignment speed and clarity.
+- No frontend UI: backend-first submission as requested.
+- No background jobs/notifications: not required for this use case.
+- No pagination: dataset is small for assessment demo.
+- SQLite chosen for simplicity and local reproducibility.
+
+## If Given More Time
+
+- Add automated tests (unit + API integration)
+- Add pagination/sorting for large order lists
+- Add status transition guardrails (e.g., no `DELIVERED` directly from `RECEIVED`)
+- Add lightweight request logging and audit trail
+- Add containerized run path (`Dockerfile`) for consistent review setup

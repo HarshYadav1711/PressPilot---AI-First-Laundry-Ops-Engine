@@ -34,7 +34,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"customerName\": \"Anita Sharma\",\n  \"phoneNumber\": \"9876543210\",\n  \"garments\": [\n    {\n      \"garmentType\": \"Shirt\",\n      \"quantity\": 3,\n      \"pricePerItem\": 50\n    },\n    {\n      \"garmentType\": \"Pants\",\n      \"quantity\": 2,\n      \"pricePerItem\": 80\n    }\n  ]\n}"
+          "raw": "{\n  \"customerName\": \"Aman Verma\",\n  \"phoneNumber\": \"9876543210\",\n  \"garments\": [\n    {\n      \"type\": \"Shirt\",\n      \"quantity\": 2,\n      \"pricePerItem\": 60\n    },\n    {\n      \"type\": \"Saree\",\n      \"quantity\": 1,\n      \"pricePerItem\": 180\n    }\n  ]\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/orders",
@@ -106,6 +106,29 @@
             {
               "key": "search",
               "value": "anita"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Filter Orders by Garment Type",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders?garmentType=shirt",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ],
+          "query": [
+            {
+              "key": "garmentType",
+              "value": "shirt"
             }
           ]
         }
