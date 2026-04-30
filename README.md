@@ -7,6 +7,7 @@ It models a practical dry-cleaning workflow: create orders, track status, search
 
 - Node.js + Express
 - SQLite (`sqlite3`)
+- Minimal static frontend (`public/index.html`)
 - No paid APIs or external services
 
 ## What The Project Does
@@ -45,6 +46,8 @@ presspilot/
       validation.js
     server.js
   PressPilot.postman_collection.json
+  public/
+    index.html
   package.json
   README.md
 ```
@@ -76,6 +79,8 @@ npm run dev
 
 Server URL: `http://localhost:3000`
 
+Frontend demo URL: `http://localhost:3000/`
+
 ## Core Features Implemented
 
 - **Create Order**
@@ -103,6 +108,7 @@ Server URL: `http://localhost:3000`
 
 - **Useful Bonus (kept restrained)**
   - Deterministic `estimatedDeliveryDate` based on `createdAt` + status offset
+  - Tiny no-build frontend to demo create/update/list/dashboard quickly
 
 ## API Endpoints
 
@@ -261,6 +267,7 @@ Response:
   - update status
   - list orders with common filters
   - dashboard
+- Minimal browser demo: `public/index.html` served from `/`
 
 ## Suggested Demo Flow (2-3 minutes)
 
@@ -304,7 +311,7 @@ Response:
 ## Tradeoffs and Intentional Omissions
 
 - No auth/roles: out of scope for assignment speed and clarity.
-- No frontend UI: backend-first submission as requested.
+- Frontend is intentionally minimal and static; no framework/build tooling added.
 - No background jobs/notifications: not required for this use case.
 - No pagination: dataset is small for assessment demo.
 - SQLite chosen for simplicity and local reproducibility.
