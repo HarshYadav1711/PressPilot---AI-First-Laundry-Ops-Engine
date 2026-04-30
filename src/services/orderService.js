@@ -127,6 +127,16 @@ async function listOrders(filters = {}) {
     params.push(filters.status);
   }
 
+  if (filters.customerName) {
+    conditions.push("LOWER(o.customer_name) LIKE ?");
+    params.push(`%${String(filters.customerName).toLowerCase().trim()}%`);
+  }
+
+  if (filters.phoneNumber) {
+    conditions.push("o.phone_number LIKE ?");
+    params.push(`%${String(filters.phoneNumber).trim()}%`);
+  }
+
   if (filters.search) {
     conditions.push("(LOWER(o.customer_name) LIKE ? OR o.phone_number LIKE ?)");
     const searchValue = `%${String(filters.search).toLowerCase().trim()}%`;
