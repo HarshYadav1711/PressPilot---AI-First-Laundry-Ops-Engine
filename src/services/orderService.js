@@ -71,25 +71,37 @@ async function createOrder(payload) {
 
   const totalBill = calculateOrderTotal(garments);
   const createdAt = new Date().toISOString();
-  const { orderCode, orderRowId } = await insertOrderWithUniqueId({
-    customerName,
-    phoneNumber,
-    totalBill,
-    createdAt
-  });
+  await run("BEGIN TRANSACTION");
 
-  for (const item of garments) {
-    const lineTotal = item.quantity * item.pricePerItem;
-    await run(
-      `
-        INSERT INTO order_items (order_id, garment_type, quantity, price_per_item, line_total)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-      [orderRowId, item.type, item.quantity, item.pricePerItem, lineTotal]
-    );
+  try {
+    const { orderCode, orderRowId } = await insertOrderWithUniqueId({
+      customerName,
+      phoneNumber,
+      totalBill,
+      createdAt
+    });
+
+    for (const item of garments) {
+      const lineTotal = item.quantity * item.pricePerItem;
+      await run(
+        `
+          INSERT INTO order_items (order_id, garment_type, quantity, price_per_item, line_total)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [orderRowId, item.type, item.quantity, item.pricePerItem, lineTotal]
+      );
+    }
+
+    await run("COMMIT");
+    return getOrderByCode(orderCode);
+  } catch (error) {
+    try {
+      await run("ROLLBACK");
+    } catch (_rollbackError) {
+      // Preserve the original error from order creation.
+    }
+    throw error;
   }
-
-  return getOrderByCode(orderCode);
 }
 
 async function getOrderByCode(orderCode) {

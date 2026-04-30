@@ -103,7 +103,7 @@ The structure is intentionally simple and readable — avoiding unnecessary abst
 ### 1. Clone the repository
 
 ```
-git clone https://github.com/your-username/presspilot.git
+git clone https://github.com/HarshYadav1711/presspilot.git
 cd presspilot
 ```
 
@@ -323,12 +323,5 @@ Instead of focusing on perfection, the focus was on:
 * Real-world workflow alignment
 * Fast iteration using AI
 * Thoughtful simplification
-
----
-
-## Author
-
-Harsh Yadav
-GitHub: https://github.com/HarshYadav1711
 
 ---
