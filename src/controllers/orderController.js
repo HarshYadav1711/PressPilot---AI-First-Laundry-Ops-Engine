@@ -36,7 +36,9 @@ async function updateOrderStatus(req, res, next) {
       return res.status(404).json({ message: "Order not found." });
     }
 
-    return res.json(updatedOrder);
+    return res.json({
+      order: updatedOrder
+    });
   } catch (error) {
     return next(error);
   }

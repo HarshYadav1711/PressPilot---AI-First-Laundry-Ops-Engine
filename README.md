@@ -183,6 +183,17 @@ Request:
 }
 ```
 
+Success response (200):
+
+```json
+{
+  "order": {
+    "orderId": "PP-20260501-AB12",
+    "status": "PROCESSING"
+  }
+}
+```
+
 Invalid status response (400):
 
 ```json

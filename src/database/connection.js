@@ -3,6 +3,7 @@ const sqlite3 = require("sqlite3").verbose();
 
 const dbPath = path.join(__dirname, "../../data/presspilot.sqlite");
 const db = new sqlite3.Database(dbPath);
+db.run("PRAGMA foreign_keys = ON");
 
 function run(sql, params = []) {
   return new Promise((resolve, reject) => {

@@ -8,6 +8,10 @@ function isValidPhone(phoneNumber) {
   return typeof phoneNumber === "string" && /^[0-9]{10,15}$/.test(phoneNumber);
 }
 
+function isValidPrice(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
 function isValidStatus(status) {
   return ORDER_STATUSES.includes(status);
 }
@@ -44,8 +48,8 @@ function validateCreateOrderPayload(payload) {
         errors.push(`garments[${index}].quantity must be a positive integer.`);
       }
 
-      if (typeof item.pricePerItem !== "number" || item.pricePerItem < 0) {
-        errors.push(`garments[${index}].pricePerItem must be a non-negative number.`);
+      if (!isValidPrice(item.pricePerItem)) {
+        errors.push(`garments[${index}].pricePerItem must be a finite non-negative number.`);
       }
     });
   }
