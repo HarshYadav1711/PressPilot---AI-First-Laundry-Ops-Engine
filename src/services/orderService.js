@@ -6,14 +6,8 @@ function calculateOrderTotal(garments) {
   return garments.reduce((sum, item) => sum + item.quantity * item.pricePerItem, 0);
 }
 
-function getEstimatedDeliveryDate(createdAt, status) {
-  const statusDays = {
-    RECEIVED: 3,
-    PROCESSING: 2,
-    READY: 0,
-    DELIVERED: 0
-  };
-  const daysToAdd = statusDays[status] ?? 0;
+function getEstimatedDeliveryDate(createdAt) {
+  const daysToAdd = 3;
   const estimatedDate = new Date(createdAt);
   estimatedDate.setDate(estimatedDate.getDate() + daysToAdd);
   return estimatedDate.toISOString();
@@ -27,7 +21,8 @@ function toOrderResponse(order, items) {
     status: order.status,
     totalBill: order.total_bill,
     createdAt: order.created_at,
-    estimatedDeliveryDate: getEstimatedDeliveryDate(order.created_at, order.status),
+    estimatedDeliveryDate:
+      order.estimated_delivery_date || getEstimatedDeliveryDate(order.created_at),
     garments: items.map((item) => ({
       type: item.garment_type,
       quantity: item.quantity,
@@ -37,16 +32,24 @@ function toOrderResponse(order, items) {
   };
 }
 
-async function insertOrderWithUniqueId({ customerName, phoneNumber, totalBill, createdAt }) {
+async function insertOrderWithUniqueId({
+  customerName,
+  phoneNumber,
+  totalBill,
+  createdAt,
+  estimatedDeliveryDate
+}) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const orderCode = generateOrderId();
     try {
       const insertOrder = await run(
         `
-          INSERT INTO orders (order_id, customer_name, phone_number, status, total_bill, created_at)
-          VALUES (?, ?, ?, 'RECEIVED', ?, ?)
+          INSERT INTO orders (
+            order_id, customer_name, phone_number, status, total_bill, created_at, estimated_delivery_date
+          )
+          VALUES (?, ?, ?, 'RECEIVED', ?, ?, ?)
         `,
-        [orderCode, customerName, phoneNumber, totalBill, createdAt]
+        [orderCode, customerName, phoneNumber, totalBill, createdAt, estimatedDeliveryDate]
       );
       return { orderCode, orderRowId: insertOrder.lastID };
     } catch (error) {
@@ -71,6 +74,7 @@ async function createOrder(payload) {
 
   const totalBill = calculateOrderTotal(garments);
   const createdAt = new Date().toISOString();
+  const estimatedDeliveryDate = getEstimatedDeliveryDate(createdAt);
   await run("BEGIN TRANSACTION");
 
   try {
@@ -78,7 +82,8 @@ async function createOrder(payload) {
       customerName,
       phoneNumber,
       totalBill,
-      createdAt
+      createdAt,
+      estimatedDeliveryDate
     });
 
     for (const item of garments) {
@@ -107,7 +112,8 @@ async function createOrder(payload) {
 async function getOrderByCode(orderCode) {
   const order = await get(
     `
-      SELECT id, order_id, customer_name, phone_number, status, total_bill, created_at
+      SELECT
+        id, order_id, customer_name, phone_number, status, total_bill, created_at, estimated_delivery_date
       FROM orders
       WHERE order_id = ?
     `,
@@ -223,7 +229,8 @@ async function listOrders(filters = {}) {
         o.phone_number,
         o.status,
         o.total_bill,
-        o.created_at
+        o.created_at,
+        o.estimated_delivery_date
       FROM orders o
       ${whereClause}
       ORDER BY o.id DESC

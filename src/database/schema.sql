@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS orders (
   phone_number TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('RECEIVED', 'PROCESSING', 'READY', 'DELIVERED')),
   total_bill REAL NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  estimated_delivery_date TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
