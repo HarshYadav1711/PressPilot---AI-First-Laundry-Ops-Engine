@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id TEXT UNIQUE NOT NULL,
+  customer_name TEXT NOT NULL,
+  phone_number TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('RECEIVED', 'PROCESSING', 'READY', 'DELIVERED')),
+  total_bill REAL NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  order_id INTEGER NOT NULL,
+  garment_type TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  price_per_item REAL NOT NULL,
+  line_total REAL NOT NULL,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);

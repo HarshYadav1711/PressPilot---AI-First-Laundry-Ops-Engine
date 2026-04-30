@@ -1,0 +1,23 @@
+{
+  "name": "presspilot",
+  "version": "1.0.0",
+  "description": "Mini laundry order management system for Quick Dry Cleaning assessment",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "laundry",
+    "orders",
+    "express",
+    "assessment"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}

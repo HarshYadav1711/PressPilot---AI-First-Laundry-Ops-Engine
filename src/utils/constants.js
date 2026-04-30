@@ -1,0 +1,5 @@
+const ORDER_STATUSES = ["RECEIVED", "PROCESSING", "READY", "DELIVERED"];
+
+module.exports = {
+  ORDER_STATUSES
+};
