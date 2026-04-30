@@ -140,7 +140,7 @@ async function getOrderByCode(orderCode) {
 async function updateOrderStatus(orderCode, status) {
   const currentOrder = await get(
     `
-      SELECT id, status
+      SELECT status
       FROM orders
       WHERE order_id = ?
     `,
