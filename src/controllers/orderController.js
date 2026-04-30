@@ -1,14 +1,19 @@
 const orderService = require("../services/orderService");
 const { isValidStatus, validateCreateOrderPayload } = require("../utils/validation");
 
+function sendError(res, statusCode, message, details) {
+  const payload = { message };
+  if (details !== undefined) {
+    payload.details = details;
+  }
+  return res.status(statusCode).json(payload);
+}
+
 async function createOrder(req, res, next) {
   try {
     const validation = validateCreateOrderPayload(req.body);
     if (!validation.valid) {
-      return res.status(400).json({
-        message: "Validation failed.",
-        errors: validation.errors
-      });
+      return sendError(res, 400, "Validation failed.", validation.errors);
     }
 
     const createdOrder = await orderService.createOrder(req.body);
@@ -26,20 +31,26 @@ async function updateOrderStatus(req, res, next) {
     const { status } = req.body || {};
 
     if (!isValidStatus(status)) {
-      return res.status(400).json({
-        message: "Invalid status. Allowed values are RECEIVED, PROCESSING, READY, DELIVERED."
-      });
+      return sendError(
+        res,
+        400,
+        "Invalid status.",
+        "Allowed values are RECEIVED, PROCESSING, READY, DELIVERED."
+      );
     }
 
     const updatedOrder = await orderService.updateOrderStatus(orderId, status);
     if (!updatedOrder) {
-      return res.status(404).json({ message: "Order not found." });
+      return sendError(res, 404, "Order not found.");
     }
 
     return res.json({
       order: updatedOrder
     });
   } catch (error) {
+    if (error && error.code === "INVALID_STATUS_TRANSITION") {
+      return sendError(res, 400, "Invalid status transition.", error.message);
+    }
     return next(error);
   }
 }
@@ -49,9 +60,12 @@ async function listOrders(req, res, next) {
     const { status, customerName, phoneNumber, garmentType, search } = req.query;
 
     if (status && !isValidStatus(status)) {
-      return res.status(400).json({
-        message: "Invalid status filter. Allowed values are RECEIVED, PROCESSING, READY, DELIVERED."
-      });
+      return sendError(
+        res,
+        400,
+        "Invalid status filter.",
+        "Allowed values are RECEIVED, PROCESSING, READY, DELIVERED."
+      );
     }
 
     const orders = await orderService.listOrders({
